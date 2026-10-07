@@ -8,6 +8,7 @@
         01.jpg, 02.jpg, ...   画像（ファイル名順に並ぶ。1〜10枚）
         caption.txt           キャプション本文
         sources.txt           出典URL（任意。1行1URL）
+        .dryrun               テスト用の目印（任意。あれば検証のみで投稿しない）
         posted.json           投稿済みマーカー（投稿後に自動生成）
 
 環境変数:
@@ -147,7 +148,7 @@ def process(post_dir: Path, dry_run: bool) -> bool:
     check_urls_alive(urls)
     print(f"[ok] {post_dir}: 画像{len(images)}枚 / 出典{len(urls)}件 確認済み")
 
-    if dry_run:
+    if dry_run or (post_dir / ".dryrun").exists():
         print(f"[dry-run] {post_dir}: 投稿しない")
         return False
 

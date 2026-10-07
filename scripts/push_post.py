@@ -2,6 +2,11 @@
 
 使い方:
     python scripts/push_post.py <素材ディレクトリ> <slug> [--date YYYYMMDD] [--no-push]
+        [--caption PATH] [--sources PATH] [--dry-run]
+
+--caption / --sources で素材ディレクトリ以外のファイルを指定できる。
+--dry-run は投稿フォルダに .dryrun を置き、Actions 側で検証のみ行わせる。
+--date の既定値は JST の今日。
 
 素材ディレクトリ:
     *.png（ファイル名順にカルーセルの並びになる）
@@ -17,7 +22,7 @@ import argparse
 import shutil
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from PIL import Image
@@ -54,18 +59,22 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("src", type=Path)
     ap.add_argument("slug")
-    ap.add_argument("--date", default=datetime.now().strftime("%Y%m%d"))
+    ap.add_argument("--date", default=datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d"))
     ap.add_argument("--no-push", action="store_true")
+    ap.add_argument("--caption", type=Path)
+    ap.add_argument("--sources", type=Path)
+    ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
     pngs = sorted(args.src.glob("*.png"))
-    caption = args.src / "caption.txt"
+    caption = args.caption or args.src / "caption.txt"
+    sources = args.sources or args.src / "sources.txt"
     if not pngs:
         raise SystemExit(f"{args.src}: PNG がない")
     if len(pngs) > 10:
         raise SystemExit(f"{args.src}: PNG が{len(pngs)}枚。上限は10枚")
     if not caption.exists():
-        raise SystemExit(f"{args.src}: caption.txt がない")
+        raise SystemExit(f"{caption}: キャプションがない")
 
     dest = REPO_ROOT / "posts" / f"{args.date}-{args.slug}"
     if dest.exists():
@@ -75,12 +84,14 @@ def main() -> int:
     for i, png in enumerate(pngs, 1):
         to_jpeg(png, dest / f"{i:02d}.jpg")
     shutil.copy(caption, dest / "caption.txt")
-    if (args.src / "sources.txt").exists():
-        shutil.copy(args.src / "sources.txt", dest / "sources.txt")
+    if sources.exists():
+        shutil.copy(sources, dest / "sources.txt")
+    if args.dry_run:
+        (dest / ".dryrun").touch()
 
     rel = dest.relative_to(REPO_ROOT).as_posix()
     git("add", rel)
-    git("commit", "-m", f"post: {dest.name}")
+    git("commit", "-m", f"post: {dest.name}{' (dry-run)' if args.dry_run else ''}")
     if not args.no_push:
         git("push")
     print(f"{rel}: 画像{len(pngs)}枚を{'コミット' if args.no_push else 'push'}した")
