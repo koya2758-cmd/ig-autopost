@@ -1,0 +1,30 @@
+name: check-token
+
+# ページの無期限トークンは更新不要。ただしパスワード変更等で失効するため、毎月1日に有効性を確認する。
+# 失敗すると GitHub から通知メールが届く。
+on:
+  schedule:
+    - cron: "17 0 1 * *"  # 毎月1日 09:17 JST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: トークン確認
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+        run: |
+          res=$(curl -sS -G "https://graph.facebook.com/v21.0/${IG_USER_ID}" \
+            --data-urlencode "fields=username" \
+            --data-urlencode "access_token=${IG_ACCESS_TOKEN}")
+          user=$(echo "$res" | jq -r '.username // empty')
+          if [ -z "$user" ]; then
+            echo "トークン無効: $(echo "$res" | jq -c '.error // .')"
+            exit 1
+          fi
+          echo "有効: @$user"

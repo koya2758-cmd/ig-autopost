@@ -11,8 +11,8 @@
         posted.json           投稿済みマーカー（投稿後に自動生成）
 
 環境変数:
-    IG_ACCESS_TOKEN   Instagram ログイン方式の長期アクセストークン
-    IG_USER_ID        Instagram プロアカウントのユーザーID
+    IG_ACCESS_TOKEN   Facebook ページの無期限アクセストークン
+    IG_USER_ID        Instagram ビジネスアカウントID（ページに紐づくID）
     GITHUB_REPOSITORY owner/repo（Actions が自動設定）
     GITHUB_SHA        画像URLを固定するコミット（Actions が自動設定）
     DRY_RUN           "1" なら API を呼ばずに検証だけ行う
@@ -30,7 +30,7 @@ from pathlib import Path
 
 import requests
 
-API_BASE = "https://graph.instagram.com/v21.0"
+API_BASE = "https://graph.facebook.com/v21.0"
 IMAGE_EXTS = {".jpg", ".jpeg"}
 MAX_ITEMS = 10
 CAPTION_MAX = 2200
