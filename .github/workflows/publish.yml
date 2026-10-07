@@ -1,0 +1,71 @@
+name: publish
+
+on:
+  push:
+    branches: [main]
+    paths: ["posts/**/caption.txt"]
+  workflow_dispatch:
+    inputs:
+      post_dir:
+        description: "投稿ディレクトリ（例: posts/20261007-sample）"
+        required: true
+      dry_run:
+        description: "検証のみ（投稿しない）"
+        type: boolean
+        default: false
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      - name: 対象ディレクトリを特定
+        id: targets
+        env:
+          INPUT_DIR: ${{ inputs.post_dir }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ -n "$INPUT_DIR" ]; then
+            dirs="$INPUT_DIR"
+          elif [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            dirs=$(git show --name-only --format= HEAD | grep '^posts/.*/caption.txt$' | xargs -r -n1 dirname)
+          else
+            dirs=$(git diff --name-only "$BEFORE" HEAD | grep '^posts/.*/caption.txt$' | xargs -r -n1 dirname)
+          fi
+          echo "dirs=$(echo $dirs)" >> "$GITHUB_OUTPUT"
+          echo "対象: $dirs"
+
+      - name: 投稿
+        if: steps.targets.outputs.dirs != ''
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: python scripts/publish.py ${{ steps.targets.outputs.dirs }}
+
+      - name: 投稿済みマーカーを記録
+        if: always() && steps.targets.outputs.dirs != ''
+        run: |
+          git add posts/*/posted.json 2>/dev/null || true
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "posted: ${{ steps.targets.outputs.dirs }}"
+          git pull --rebase origin main
+          git push origin HEAD:main
