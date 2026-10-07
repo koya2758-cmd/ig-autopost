@@ -26,11 +26,11 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -45,9 +45,9 @@ jobs:
           if [ -n "$INPUT_DIR" ]; then
             dirs="$INPUT_DIR"
           elif [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
-            dirs=$(git show --name-only --format= HEAD | grep '^posts/.*/caption.txt$' | xargs -r -n1 dirname)
+            dirs=$(git show --name-only --diff-filter=AM --format= HEAD | grep '^posts/.*/caption.txt$' | xargs -r -n1 dirname)
           else
-            dirs=$(git diff --name-only "$BEFORE" HEAD | grep '^posts/.*/caption.txt$' | xargs -r -n1 dirname)
+            dirs=$(git diff --name-only --diff-filter=AM "$BEFORE" HEAD | grep '^posts/.*/caption.txt$' | xargs -r -n1 dirname)
           fi
           echo "dirs=$(echo $dirs)" >> "$GITHUB_OUTPUT"
           echo "対象: $dirs"
