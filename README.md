@@ -17,7 +17,7 @@
 
 Facebook ログイン方式の Instagram API を使う。Instagram プロアカウントを Facebook ページにリンクしておく。
 
-リポジトリの Settings → Secrets and variables → Actions に2つ登録する。
+リポジトリの Settings → Environments → `production` の Environment secrets に2つ登録する。
 
 | 名前 | 中身 | 取得元 |
 |---|---|---|
